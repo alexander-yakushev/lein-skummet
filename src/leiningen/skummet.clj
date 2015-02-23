@@ -10,31 +10,38 @@
             leiningen.run
             leiningen.uberjar))
 
+(defn eval-in-project
+  ([project form init]
+   (eval/prep project)
+   (eval/eval-in project
+                 `(do ~@(map (fn [[k v]] `(set! ~k ~v)) (:global-vars project))
+                      ~init
+                      ~@(:injections project)
+                      ~form)))
+  ([project form] (eval-in-project project form nil)))
+
 (defn skummet
   [project & [subtask & args]]
   (cond
    (= subtask "compile")
    (do
      (leiningen.clean/clean project)
-     (if-let [namespaces (cons 'clojure.core (seq (leiningen.compile/stale-namespaces project)))]
-       (let [form `(let [lean-var?# (fn [var#]
-                                      (not (#{~@(:skummet-skip-vars project)}
-                                            (str var#))))]
-                     (push-thread-bindings {#'clojure.core/*loaded-libs* (ref (sorted-set))})
-                     (try
-                       (binding [~'*lean-var?* lean-var?#
-                                 ~'*lean-compile* true
-                                 *compiler-options* {:elide-meta [:doc :file :line :added :arglists
-                                                                  :column :static :author :added]}]
-                         (doseq [namespace# '~namespaces]
-                           (println "Compiling" namespace#)
-                           (clojure.core/compile namespace#)))
-                       (finally (pop-thread-bindings))))
+     (if-let [namespaces (seq (leiningen.compile/stale-namespaces project))]
+       (let [form `(let [lean-var?# (fn [var#] (not (#{~@(:skummet-skip-vars project)}
+                                                    (str var#))))]
+                     (binding [~'*lean-var?* lean-var?#
+                               ~'*lean-compile* true
+
+                               ~'*compiler-options*
+                               {:elide-meta [:doc :file :line :added :arglists
+                                             :column :static :author :added]}]
+                       (doseq [namespace# '~namespaces]
+                         (println "Compiling" namespace#)
+                         (compile namespace#))))
              project (-> project
-                         (update-in [:prep-tasks]
-                                    (partial remove #{"compile"}))
+                         (update-in [:prep-tasks] (partial remove #{"compile"}))
                          (assoc :jvm-opts ["-Dclojure.compile.ignore-lean-classes=true"]))]
-         (try (eval/eval-in-project project form)
+         (try (eval-in-project project form)
               (catch Exception e
                 (main/abort "Compilation failed:" (.getMessage e)))))
        (main/debug "All namespaces already AOT compiled.")))
