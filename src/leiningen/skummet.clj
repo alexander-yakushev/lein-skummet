@@ -29,10 +29,10 @@
      (if-let [namespaces (seq (leiningen.compile/stale-namespaces project))]
        (let [form `(let [lean-var?# (fn [var#] (not (#{~@(:skummet-skip-vars project)}
                                                     (str var#))))]
-                     (binding [~'*lean-var?* lean-var?#
-                               ~'*lean-compile* true
+                     (binding [~'clojure.core/*lean-var?* lean-var?#
+                               ~'clojure.core/*lean-compile* true
 
-                               ~'*compiler-options*
+                               ~'clojure.core/*compiler-options*
                                {:elide-meta [:doc :file :line :added :arglists
                                              :column :static :author :added]}]
                        (doseq [namespace# '~namespaces]
