@@ -31,7 +31,6 @@
     (cond
       (= subtask "compile")
       (do
-        (leiningen.clean/clean project)
         (if-let [namespaces (seq (leiningen.compile/stale-namespaces project))]
           (let [form `(let [lean-var?# (fn [var#] (not (#{~@(:skummet-skip-vars project)}
                                                        (str var#))))]
