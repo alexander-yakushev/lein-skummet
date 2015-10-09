@@ -23,6 +23,7 @@
 (defn skummet
   [project & [subtask & args]]
   (let [project (-> project
+                    ;; (pr/read "sample/project.clj")
                     (vary-meta assoc-in [:profiles ::skummet]
                                {:prep-tasks []
                                 :auto-clean false
@@ -52,6 +53,7 @@
       (let [deps-line (->> (cp/resolve-dependencies :dependencies project)
                            (cons (jio/file (:target-path project) "classes"))
                            (interpose ":") (apply str))]
+        (main/debug "Running" "java" "-cp" deps-line (str (:main project)) args)
         (apply eval/sh "java" "-cp" deps-line (str (:main project)) args))
 
       (= subtask "jar")
